@@ -1,0 +1,368 @@
+.
+├── calibrate.py
+├── cla_commands
+│   └── commands.odt
+├── common
+│   ├── cameras
+│   │   ├── camera.py
+│   │   ├── configs.py
+│   │   ├── __init__.py
+│   │   ├── opencv
+│   │   │   ├── camera_opencv.py
+│   │   │   ├── configuration_opencv.py
+│   │   │   ├── __init__.py
+│   │   │   └── __pycache__
+│   │   │       ├── camera_opencv.cpython-310.pyc
+│   │   │       ├── configuration_opencv.cpython-310.pyc
+│   │   │       └── __init__.cpython-310.pyc
+│   │   ├── __pycache__
+│   │   │   ├── camera.cpython-310.pyc
+│   │   │   ├── configs.cpython-310.pyc
+│   │   │   ├── __init__.cpython-310.pyc
+│   │   │   └── utils.cpython-310.pyc
+│   │   ├── realsense
+│   │   │   ├── camera_realsense.py
+│   │   │   ├── configuration_realsense.py
+│   │   │   ├── __init__.py
+│   │   │   └── __pycache__
+│   │   │       ├── camera_realsense.cpython-310.pyc
+│   │   │       ├── configuration_realsense.cpython-310.pyc
+│   │   │       └── __init__.cpython-310.pyc
+│   │   └── utils.py
+│   ├── constants.py
+│   ├── datasets
+│   │   ├── backward_compatibility.py
+│   │   ├── card_template.md
+│   │   ├── compute_stats.py
+│   │   ├── factory.py
+│   │   ├── image_writer.py
+│   │   ├── lerobot_dataset.py
+│   │   ├── online_buffer.py
+│   │   ├── push_dataset_to_hub
+│   │   │   └── utils.py
+│   │   ├── __pycache__
+│   │   │   ├── backward_compatibility.cpython-310.pyc
+│   │   │   ├── compute_stats.cpython-310.pyc
+│   │   │   ├── image_writer.cpython-310.pyc
+│   │   │   ├── lerobot_dataset.cpython-310.pyc
+│   │   │   ├── utils.cpython-310.pyc
+│   │   │   └── video_utils.cpython-310.pyc
+│   │   ├── sampler.py
+│   │   ├── transforms.py
+│   │   ├── utils.py
+│   │   ├── v2
+│   │   │   ├── batch_convert_dataset_v1_to_v2.py
+│   │   │   └── convert_dataset_v1_to_v2.py
+│   │   ├── v21
+│   │   │   ├── batch_convert_dataset_v20_to_v21.py
+│   │   │   ├── convert_dataset_v20_to_v21.py
+│   │   │   ├── convert_stats.py
+│   │   │   └── _remove_language_instruction.py
+│   │   └── video_utils.py
+│   ├── envs
+│   │   ├── configs.py
+│   │   ├── factory.py
+│   │   ├── __init__.py
+│   │   ├── __pycache__
+│   │   │   ├── configs.cpython-310.pyc
+│   │   │   ├── __init__.cpython-310.pyc
+│   │   │   └── utils.cpython-310.pyc
+│   │   └── utils.py
+│   ├── errors.py
+│   ├── model
+│   │   ├── kinematics.py
+│   │   └── __pycache__
+│   │       └── kinematics.cpython-310.pyc
+│   ├── motors
+│   │   ├── dynamixel
+│   │   │   ├── dynamixel.py
+│   │   │   ├── __init__.py
+│   │   │   ├── __pycache__
+│   │   │   │   ├── dynamixel.cpython-310.pyc
+│   │   │   │   ├── __init__.cpython-310.pyc
+│   │   │   │   └── tables.cpython-310.pyc
+│   │   │   └── tables.py
+│   │   ├── feetech
+│   │   │   ├── feetech.py
+│   │   │   ├── __init__.py
+│   │   │   ├── __pycache__
+│   │   │   │   ├── feetech.cpython-310.pyc
+│   │   │   │   ├── __init__.cpython-310.pyc
+│   │   │   │   └── tables.cpython-310.pyc
+│   │   │   └── tables.py
+│   │   ├── __init__.py
+│   │   ├── motors_bus.py
+│   │   └── __pycache__
+│   │       ├── __init__.cpython-310.pyc
+│   │       └── motors_bus.cpython-310.pyc
+│   ├── optim
+│   │   ├── factory.py
+│   │   ├── __init__.py
+│   │   ├── optimizers.py
+│   │   ├── __pycache__
+│   │   │   ├── __init__.cpython-310.pyc
+│   │   │   ├── optimizers.cpython-310.pyc
+│   │   │   └── schedulers.cpython-310.pyc
+│   │   └── schedulers.py
+│   ├── policies
+│   │   ├── act
+│   │   │   ├── configuration_act.py
+│   │   │   ├── modeling_act.py
+│   │   │   └── __pycache__
+│   │   │       └── configuration_act.cpython-310.pyc
+│   │   ├── diffusion
+│   │   │   ├── configuration_diffusion.py
+│   │   │   ├── modeling_diffusion.py
+│   │   │   └── __pycache__
+│   │   │       └── configuration_diffusion.cpython-310.pyc
+│   │   ├── factory.py
+│   │   ├── __init__.py
+│   │   ├── normalize.py
+│   │   ├── pi0
+│   │   │   ├── configuration_pi0.py
+│   │   │   ├── conversion_scripts
+│   │   │   │   ├── benchmark.py
+│   │   │   │   ├── compare_with_jax.py
+│   │   │   │   ├── conversion_utils.py
+│   │   │   │   └── convert_pi0_to_hf_lerobot.py
+│   │   │   ├── flex_attention.py
+│   │   │   ├── modeling_pi0.py
+│   │   │   ├── paligemma_with_expert.py
+│   │   │   └── __pycache__
+│   │   │       └── configuration_pi0.cpython-310.pyc
+│   │   ├── pi0fast
+│   │   │   ├── configuration_pi0fast.py
+│   │   │   ├── modeling_pi0fast.py
+│   │   │   └── __pycache__
+│   │   │       └── configuration_pi0fast.cpython-310.pyc
+│   │   ├── pretrained.py
+│   │   ├── __pycache__
+│   │   │   ├── factory.cpython-310.pyc
+│   │   │   ├── __init__.cpython-310.pyc
+│   │   │   └── pretrained.cpython-310.pyc
+│   │   ├── sac
+│   │   │   ├── configuration_sac.py
+│   │   │   ├── modeling_sac.py
+│   │   │   ├── __pycache__
+│   │   │   │   └── configuration_sac.cpython-310.pyc
+│   │   │   └── reward_model
+│   │   │       ├── configuration_classifier.py
+│   │   │       ├── modeling_classifier.py
+│   │   │       └── __pycache__
+│   │   │           └── configuration_classifier.cpython-310.pyc
+│   │   ├── smolvla
+│   │   │   ├── configuration_smolvla.py
+│   │   │   ├── modeling_smolvla.py
+│   │   │   ├── __pycache__
+│   │   │   │   └── configuration_smolvla.cpython-310.pyc
+│   │   │   └── smolvlm_with_expert.py
+│   │   ├── tdmpc
+│   │   │   ├── configuration_tdmpc.py
+│   │   │   ├── modeling_tdmpc.py
+│   │   │   └── __pycache__
+│   │   │       └── configuration_tdmpc.cpython-310.pyc
+│   │   ├── utils.py
+│   │   └── vqbet
+│   │       ├── configuration_vqbet.py
+│   │       ├── modeling_vqbet.py
+│   │       ├── __pycache__
+│   │       │   └── configuration_vqbet.cpython-310.pyc
+│   │       └── vqbet_utils.py
+│   ├── __pycache__
+│   │   ├── constants.cpython-310.pyc
+│   │   └── errors.cpython-310.pyc
+│   ├── robots
+│   │   ├── config.py
+│   │   ├── __init__.py
+│   │   ├── koch_follower
+│   │   │   ├── config_koch_follower.py
+│   │   │   ├── __init__.py
+│   │   │   ├── koch_follower.py
+│   │   │   ├── koch.mdx
+│   │   │   └── __pycache__
+│   │   │       ├── config_koch_follower.cpython-310.pyc
+│   │   │       ├── __init__.cpython-310.pyc
+│   │   │       └── koch_follower.cpython-310.pyc
+│   │   ├── lekiwi
+│   │   │   ├── config_lekiwi.py
+│   │   │   ├── __init__.py
+│   │   │   ├── lekiwi_client.py
+│   │   │   ├── lekiwi_host.py
+│   │   │   ├── lekiwi.mdx
+│   │   │   ├── lekiwi.py
+│   │   │   └── __pycache__
+│   │   │       ├── config_lekiwi.cpython-310.pyc
+│   │   │       ├── __init__.cpython-310.pyc
+│   │   │       ├── lekiwi_client.cpython-310.pyc
+│   │   │       └── lekiwi.cpython-310.pyc
+│   │   ├── __pycache__
+│   │   │   ├── config.cpython-310.pyc
+│   │   │   ├── __init__.cpython-310.pyc
+│   │   │   ├── robot.cpython-310.pyc
+│   │   │   └── utils.cpython-310.pyc
+│   │   ├── robot.py
+│   │   ├── so100_follower
+│   │   │   ├── config_so100_follower.py
+│   │   │   ├── __init__.py
+│   │   │   ├── __pycache__
+│   │   │   │   ├── config_so100_follower.cpython-310.pyc
+│   │   │   │   ├── __init__.cpython-310.pyc
+│   │   │   │   ├── so100_follower.cpython-310.pyc
+│   │   │   │   └── so100_follower_end_effector.cpython-310.pyc
+│   │   │   ├── so100_follower_end_effector.py
+│   │   │   ├── so100_follower.py
+│   │   │   └── so100.mdx
+│   │   ├── so101_follower
+│   │   │   ├── config_so101_follower.py
+│   │   │   ├── __init__.py
+│   │   │   ├── __pycache__
+│   │   │   │   ├── config_so101_follower.cpython-310.pyc
+│   │   │   │   ├── __init__.cpython-310.pyc
+│   │   │   │   └── so101_follower.cpython-310.pyc
+│   │   │   ├── so101_follower.py
+│   │   │   └── so101.mdx
+│   │   ├── stretch3
+│   │   │   ├── configuration_stretch3.py
+│   │   │   ├── __init__.py
+│   │   │   ├── README.md
+│   │   │   └── robot_stretch3.py
+│   │   ├── utils.py
+│   │   └── viperx
+│   │       ├── config_viperx.py
+│   │       ├── __init__.py
+│   │       ├── README.md
+│   │       └── viperx.py
+│   ├── teleoperators
+│   │   ├── config.py
+│   │   ├── gamepad
+│   │   │   ├── configuration_gamepad.py
+│   │   │   ├── gamepad_utils.py
+│   │   │   ├── __init__.py
+│   │   │   ├── __pycache__
+│   │   │   │   ├── configuration_gamepad.cpython-310.pyc
+│   │   │   │   ├── __init__.cpython-310.pyc
+│   │   │   │   └── teleop_gamepad.cpython-310.pyc
+│   │   │   └── teleop_gamepad.py
+│   │   ├── __init__.py
+│   │   ├── keyboard
+│   │   │   ├── configuration_keyboard.py
+│   │   │   ├── __init__.py
+│   │   │   └── teleop_keyboard.py
+│   │   ├── koch_leader
+│   │   │   ├── config_koch_leader.py
+│   │   │   ├── __init__.py
+│   │   │   ├── koch_leader.py
+│   │   │   └── __pycache__
+│   │   │       ├── config_koch_leader.cpython-310.pyc
+│   │   │       ├── __init__.cpython-310.pyc
+│   │   │       └── koch_leader.cpython-310.pyc
+│   │   ├── __pycache__
+│   │   │   ├── config.cpython-310.pyc
+│   │   │   ├── __init__.cpython-310.pyc
+│   │   │   ├── teleoperator.cpython-310.pyc
+│   │   │   └── utils.cpython-310.pyc
+│   │   ├── so100_leader
+│   │   │   ├── config_so100_leader.py
+│   │   │   ├── __init__.py
+│   │   │   ├── __pycache__
+│   │   │   │   ├── config_so100_leader.cpython-310.pyc
+│   │   │   │   ├── __init__.cpython-310.pyc
+│   │   │   │   └── so100_leader.cpython-310.pyc
+│   │   │   └── so100_leader.py
+│   │   ├── so101_leader
+│   │   │   ├── config_so101_leader.py
+│   │   │   ├── __init__.py
+│   │   │   ├── __pycache__
+│   │   │   │   ├── config_so101_leader.cpython-310.pyc
+│   │   │   │   ├── __init__.cpython-310.pyc
+│   │   │   │   └── so101_leader.cpython-310.pyc
+│   │   │   └── so101_leader.py
+│   │   ├── stretch3_gamepad
+│   │   │   ├── configuration_stretch3.py
+│   │   │   ├── __init__.py
+│   │   │   └── stretch3_gamepad.py
+│   │   ├── teleoperator.py
+│   │   ├── utils.py
+│   │   └── widowx
+│   │       ├── config_widowx.py
+│   │       ├── __init__.py
+│   │       └── widowx.py
+│   ├── transport
+│   │   ├── services_pb2_grpc.py
+│   │   ├── services_pb2.py
+│   │   ├── services.proto
+│   │   └── utils.py
+│   └── utils
+│       ├── benchmark.py
+│       ├── buffer.py
+│       ├── control_utils.py
+│       ├── encoding_utils.py
+│       ├── hub.py
+│       ├── import_utils.py
+│       ├── io_utils.py
+│       ├── logging_utils.py
+│       ├── process.py
+│       ├── __pycache__
+│       │   ├── control_utils.cpython-310.pyc
+│       │   ├── encoding_utils.cpython-310.pyc
+│       │   ├── hub.cpython-310.pyc
+│       │   ├── io_utils.cpython-310.pyc
+│       │   ├── robot_utils.cpython-310.pyc
+│       │   ├── utils.cpython-310.pyc
+│       │   └── visualization_utils.cpython-310.pyc
+│       ├── queue.py
+│       ├── random_utils.py
+│       ├── robot_utils.py
+│       ├── train_utils.py
+│       ├── transition.py
+│       ├── utils.py
+│       ├── visualization_utils.py
+│       └── wandb_utils.py
+├── configs
+│   ├── default.py
+│   ├── eval.py
+│   ├── parser.py
+│   ├── policies.py
+│   ├── __pycache__
+│   │   ├── parser.cpython-310.pyc
+│   │   ├── policies.cpython-310.pyc
+│   │   └── types.cpython-310.pyc
+│   ├── train.py
+│   └── types.py
+├── find_cameras.py
+├── find_port.py
+├── __init__.py
+├── lerobot_file_structure.txt
+├── __pycache__
+│   ├── calibrate.cpython-310.pyc
+│   ├── __init__.cpython-310.pyc
+│   ├── record.cpython-310.pyc
+│   ├── teleoperate.cpython-310.pyc
+│   └── __version__.cpython-310.pyc
+├── record.py
+├── replay.py
+├── scripts
+│   ├── display_sys_info.py
+│   ├── eval.py
+│   ├── find_joint_limits.py
+│   ├── push_pretrained.py
+│   ├── rl
+│   │   ├── actor.py
+│   │   ├── crop_dataset_roi.py
+│   │   ├── eval_policy.py
+│   │   ├── gym_manipulator.py
+│   │   ├── learner.py
+│   │   └── learner_service.py
+│   ├── train.py
+│   ├── visualize_dataset_html.py
+│   ├── visualize_dataset.py
+│   └── visualize_image_transforms.py
+├── setup_motors.py
+├── so100_teleop_api.py
+├── teleoperate.py
+├── templates
+│   ├── visualize_dataset_homepage.html
+│   └── visualize_dataset_template.html
+└── __version__.py
+
+82 directories, 284 files

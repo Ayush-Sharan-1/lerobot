@@ -1,0 +1,135 @@
+.
+├── benchmarks
+│   └── video
+├── docker
+│   ├── lerobot-cpu
+│   ├── lerobot-gpu
+│   └── lerobot-gpu-dev
+├── docs
+│   └── source
+├── examples
+│   ├── advanced
+│   ├── backward_compatibility
+│   └── lekiwi
+├── lerobot
+│   ├── cla_commands
+│   ├── common
+│   │   ├── cameras
+│   │   │   ├── opencv
+│   │   │   │   └── __pycache__
+│   │   │   ├── __pycache__
+│   │   │   └── realsense
+│   │   │       └── __pycache__
+│   │   ├── datasets
+│   │   │   ├── push_dataset_to_hub
+│   │   │   ├── __pycache__
+│   │   │   ├── v2
+│   │   │   └── v21
+│   │   ├── envs
+│   │   │   └── __pycache__
+│   │   ├── model
+│   │   │   └── __pycache__
+│   │   ├── motors
+│   │   │   ├── dynamixel
+│   │   │   │   └── __pycache__
+│   │   │   ├── feetech
+│   │   │   │   └── __pycache__
+│   │   │   └── __pycache__
+│   │   ├── optim
+│   │   │   └── __pycache__
+│   │   ├── policies
+│   │   │   ├── act
+│   │   │   │   └── __pycache__
+│   │   │   ├── diffusion
+│   │   │   │   └── __pycache__
+│   │   │   ├── pi0
+│   │   │   │   ├── conversion_scripts
+│   │   │   │   └── __pycache__
+│   │   │   ├── pi0fast
+│   │   │   │   └── __pycache__
+│   │   │   ├── __pycache__
+│   │   │   ├── sac
+│   │   │   │   ├── __pycache__
+│   │   │   │   └── reward_model
+│   │   │   │       └── __pycache__
+│   │   │   ├── smolvla
+│   │   │   │   └── __pycache__
+│   │   │   ├── tdmpc
+│   │   │   │   └── __pycache__
+│   │   │   └── vqbet
+│   │   │       └── __pycache__
+│   │   ├── __pycache__
+│   │   ├── robots
+│   │   │   ├── koch_follower
+│   │   │   │   └── __pycache__
+│   │   │   ├── lekiwi
+│   │   │   │   └── __pycache__
+│   │   │   ├── __pycache__
+│   │   │   ├── so100_follower
+│   │   │   │   └── __pycache__
+│   │   │   ├── so101_follower
+│   │   │   │   └── __pycache__
+│   │   │   ├── stretch3
+│   │   │   └── viperx
+│   │   ├── teleoperators
+│   │   │   ├── gamepad
+│   │   │   │   └── __pycache__
+│   │   │   ├── keyboard
+│   │   │   ├── koch_leader
+│   │   │   │   └── __pycache__
+│   │   │   ├── __pycache__
+│   │   │   ├── so100_leader
+│   │   │   │   └── __pycache__
+│   │   │   ├── so101_leader
+│   │   │   │   └── __pycache__
+│   │   │   ├── stretch3_gamepad
+│   │   │   └── widowx
+│   │   ├── transport
+│   │   └── utils
+│   │       └── __pycache__
+│   ├── configs
+│   │   └── __pycache__
+│   ├── __pycache__
+│   ├── scripts
+│   │   └── rl
+│   └── templates
+├── literature
+├── media
+│   ├── gym
+│   ├── lekiwi
+│   ├── so100
+│   └── so101
+├── outputs
+│   └── captured_images
+└── tests
+    ├── artifacts
+    │   ├── cameras
+    │   ├── datasets
+    │   │   └── lerobot
+    │   │       ├── aloha_sim_insertion_human
+    │   │       ├── pusht
+    │   │       └── xarm_lift_medium
+    │   ├── image_transforms
+    │   └── policies
+    │       ├── aloha_sim_insertion_human_act_
+    │       ├── aloha_sim_insertion_human_act_1000_steps
+    │       ├── pusht_diffusion_
+    │       ├── xarm_lift_medium_tdmpc_use_mpc
+    │       └── xarm_lift_medium_tdmpc_use_policy
+    ├── cameras
+    ├── configs
+    ├── datasets
+    ├── envs
+    ├── examples
+    ├── fixtures
+    ├── mocks
+    ├── motors
+    ├── optim
+    ├── policies
+    │   └── hilserl
+    ├── rl
+    ├── robots
+    ├── transport
+    └── utils
+
+133 directories

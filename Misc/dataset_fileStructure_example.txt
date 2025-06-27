@@ -1,0 +1,28 @@
+~/.cache/huggingface/lerobot/Ayush-Sharan-1/test_single_task$ tree
+.
+├── data
+│   └── chunk-000
+│       ├── episode_000000.parquet
+│       ├── episode_000001.parquet
+│       ├── episode_000002.parquet
+│       └── episode_000003.parquet
+├── dataset_fileStructure_example.txt
+├── meta
+│   ├── episodes.jsonl
+│   ├── episodes_stats.jsonl
+│   ├── info.json
+│   └── tasks.jsonl
+└── videos
+    └── chunk-000
+        ├── observation.images.front
+        │   ├── episode_000000.mp4
+        │   ├── episode_000001.mp4
+        │   ├── episode_000002.mp4
+        │   └── episode_000003.mp4
+        └── observation.images.top
+            ├── episode_000000.mp4
+            ├── episode_000001.mp4
+            ├── episode_000002.mp4
+            └── episode_000003.mp4
+
+8 directories, 17 files
