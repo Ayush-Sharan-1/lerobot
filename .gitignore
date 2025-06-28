@@ -173,3 +173,7 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+# Custom folders
+literature/
+cla_commands/
