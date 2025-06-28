@@ -325,7 +325,7 @@ class ACT(nn.Module):
             # Fixed sinusoidal positional embedding for the input to the VAE encoder. Unsqueeze for batch
             # dimension.
             num_input_token_encoder = 1 + config.chunk_size
-            num_input_token_encoder += 1  # Custom: Adding 1 more token for task
+            num_input_token_encoder += 1  # Custom: task token
             if self.config.robot_state_feature:
                 num_input_token_encoder += 1
             self.register_buffer(
@@ -483,7 +483,7 @@ class ACT(nn.Module):
             task_embed = self.prepare_language(batch).unsqueeze(1) #(B, 1, D)
 
             if self.config.robot_state_feature:
-                vae_encoder_input = [cls_embed, robot_state_embed, task_embed, action_embed]  # (B, S+2, D)
+                vae_encoder_input = [cls_embed, task_embed, robot_state_embed, action_embed]  # (B, S+2, D)
             else:
                 vae_encoder_input = [cls_embed, task_embed, action_embed]
 
@@ -530,19 +530,20 @@ class ACT(nn.Module):
         # Prepare transformer encoder inputs.
         encoder_in_tokens = [self.encoder_latent_input_proj(latent_sample)]
         encoder_in_pos_embed = list(self.encoder_1d_feature_pos_embed.weight.unsqueeze(1))
+
+        # Task token
+        task_embed = self.prepare_language(batch)
+        encoder_in_tokens.append(task_embed)
+
         # Robot state token.
         if self.config.robot_state_feature:
             encoder_in_tokens.append(self.encoder_robot_state_input_proj(batch["observation.state"]))
+
         # Environment state token.
         if self.config.env_state_feature:
             encoder_in_tokens.append(
                 self.encoder_env_state_input_proj(batch["observation.environment_state"])
             )
-
-        # Task token
-        task_embed = self.prepare_language(batch)
-        encoder_in_tokens.append(task_embed)
-        
 
         # Camera observation features and positional embeddings.
         if self.config.image_features:
