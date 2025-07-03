@@ -493,6 +493,12 @@ class LeRobotDataset(torch.utils.data.Dataset):
             check_delta_timestamps(self.delta_timestamps, self.fps, self.tolerance_s)
             self.delta_indices = get_delta_indices(self.delta_timestamps, self.fps)
 
+        # Custom: Create a mapping from the episode index to the array index
+        if self.episodes is not None:
+            self.ep_idx_to_arr_idx = {ep_idx: arr_idx for arr_idx, ep_idx in enumerate(self.episodes)}
+        else:
+            self.ep_idx_to_arr_idx = None
+
     def push_to_hub(
         self,
         branch: str | None = None,
@@ -641,6 +647,11 @@ class LeRobotDataset(torch.utils.data.Dataset):
             return get_hf_features_from_features(self.features)
 
     def _get_query_indices(self, idx: int, ep_idx: int) -> tuple[dict[str, list[int | bool]]]:
+        # Custom: Maps an episode index to its corresponding index in the episodes list. 
+        # For example, in episodes = [3, 6, 8], episode 6 maps to index 1.
+        if self.ep_idx_to_arr_idx is not None:
+            ep_idx = self.ep_idx_to_arr_idx[ep_idx]
+
         ep_start = self.episode_data_index["from"][ep_idx]
         ep_end = self.episode_data_index["to"][ep_idx]
         query_indices = {
