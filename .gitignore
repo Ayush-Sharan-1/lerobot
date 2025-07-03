@@ -176,7 +176,7 @@ cython_debug/
 
 # Custom folders
 literature/
-cla_commands/
+# cla_commands/
 benchmarks/GPU/
 training_pipelines/
 
