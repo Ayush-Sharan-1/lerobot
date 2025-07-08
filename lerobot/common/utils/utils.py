@@ -124,7 +124,8 @@ def init_logging(log_file: Path | None = None, display_pid: bool = False):
             message = f"{record.levelname} {dt} {fnameline[-15:]:>15} {record.msg}"
         return message
 
-    logging.basicConfig(level=logging.INFO)
+    # EXPLICITLY set the root logger level
+    logging.getLogger().setLevel(logging.INFO)
 
     for handler in logging.root.handlers[:]:
         logging.root.removeHandler(handler)
