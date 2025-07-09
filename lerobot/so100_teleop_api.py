@@ -117,7 +117,7 @@ def teleoperation_with_cameras():
 
         display_len = max(len(key) for key in robot.action_features)
         start = time.perf_counter()
-        fps=60
+        fps=30
         duration=None
         while True:
             loop_start = time.perf_counter()
