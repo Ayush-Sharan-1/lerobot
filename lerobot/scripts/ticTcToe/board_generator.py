@@ -148,7 +148,7 @@ if __name__ == "__main__":
     # 4 5 6  
     # 5 8 9
 
-    empty_position = 9
+    empty_position = 7
     num_configs=10
     
     # Generate 10 configurations for top-right corner (position 2)
