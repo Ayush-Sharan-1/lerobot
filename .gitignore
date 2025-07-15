@@ -180,3 +180,4 @@ benchmarks/GPU/
 
 # Custom Files
 lerobot/profile_record.py
+.env
