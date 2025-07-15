@@ -12,7 +12,8 @@ from lerobot.record import (
     )
 from lerobot.common.datasets.utils import (
     build_dataset_frame,
-    hw_to_dataset_features
+    hw_to_dataset_features,
+    DEFAULT_FEATURES
     )
 from lerobot.common.robots import (
     RobotConfig,
@@ -32,35 +33,40 @@ from lerobot.common.utils.utils import (
 )
 from lerobot.common.datasets.lerobot_dataset import LeRobotDatasetMetadata
 from lerobot.common.utils.robot_utils import busy_wait
+from contextlib import contextmanager
+from typing import Optional
+import re
 
 client = genai.Client(api_key="AIzaSyBzTXl9RXslaa4ReL19T19iEMM2l1v_O34")
+
+class MockDatasetMetadata:
+    """Mock metadata object to satisfy make_policy requirements"""
+    def __init__(self, features: dict, stats: dict = None):
+        self.features = features
+        self.stats = stats or {}
 
 @dataclass
 class TicTacToeConfig:
     robot: RobotConfig
-    # Whether to control the robot with a policy
-    policy: PreTrainedConfig | None = None
-    # Display all cameras on screen
-    display_data: bool = False
     # Use vocal synthesis to read events.
     play_sounds: bool = True
-    # Resume recording on an existing dataset.
-    resume: bool = False
-    # Dataset identifier. By convention it should match '{hf_username}/{dataset_name}' (e.g. `lerobot/test`).
-    repo_id: str
-    # A short but accurate description of the task performed during the recording (e.g. "Pick the Lego block and drop it in the box on the right.")
-    single_task: str
     # Root directory where the dataset will be stored (e.g. 'dataset/path').
     root: str | Path | None = None
     # Limit the frames per second.
     fps: int = 30
-    # Number of seconds for data recording for each episode.
-    episode_time_s: int | float = 30
+    # Number of seconds for the robot to play its turn
+    robot_turn_time_s: int | float = 30
+    # Number of seconds for the human player to play their turn
+    player_turn_time_s: int | float = 10
     # Encode frames in the dataset into video
-    video: bool = True
+    use_videos: bool = True
+    policy: PreTrainedConfig | None = None
+    # Metadata for policy
+    metadata: MockDatasetMetadata | None = None
 
-    revision: str | None = None,
-    force_cache_sync: bool = False,
+
+    revision: str | None = None
+    force_cache_sync: bool = False
 
     def __post_init__(self):
         # HACK: We parse again the cli args here to get the pretrained path if there was one.
@@ -72,6 +78,9 @@ class TicTacToeConfig:
 
         if self.policy is None:
             raise ValueError("Choose a policy")
+        
+        robot = make_robot_from_config(self.robot)
+        self.metadata = create_mock_metadata(robot, self.use_videos)
 
     @classmethod
     def __get_path_fields__(cls) -> list[str]:
@@ -79,128 +88,166 @@ class TicTacToeConfig:
         return ["policy"]
 
 
-def call_policy(cfg: TicTacToeConfig, instruction: str):
+@contextmanager
+def robot_context(cfg: TicTacToeConfig):
+    """Context manager for robot connection."""
     robot = make_robot_from_config(cfg.robot)
-    action_features = hw_to_dataset_features(robot.action_features, "action", cfg.video)
-    obs_features = hw_to_dataset_features(robot.observation_features, "observation", cfg.video)
+    listener = None
+    try:
+        robot.connect()
+        listener, events = init_keyboard_listener()
+        yield robot, events
+    finally:
+        robot.disconnect()
+        if listener:
+            listener.stop()
+
+def create_mock_metadata(robot, use_videos: bool = True) -> MockDatasetMetadata:
+    """Create minimal metadata needed for make_policy"""
+    action_features = hw_to_dataset_features(robot.action_features, "action", use_videos)
+    obs_features = hw_to_dataset_features(robot.observation_features, "observation", use_videos)
     dataset_features = {**action_features, **obs_features}
+    
+    # Combine with default features (same as LeRobotDatasetMetadata.create())
+    features = {**dataset_features, **DEFAULT_FEATURES}
+    
+    # Empty stats (same as new dataset)
+    stats = {}
+    
+    return MockDatasetMetadata(features, stats)
 
-    meta = LeRobotDatasetMetadata(
-            cfg.repo_id, cfg.root, cfg.revision, force_cache_sync=cfg.force_cache_sync
-        )
+def call_policy(cfg: TicTacToeConfig, instruction: str):
+    """Execute policy with proper resource management."""
+    with robot_context(cfg) as (robot, events):
 
-    # Load pretrained policy
-    policy = make_policy(cfg.policy, ds_meta=meta)
+        policy = make_policy(cfg.policy, ds_meta=cfg.metadata)
 
-    robot.connect()
+        matches = re.findall(r'Place at position \d+', instruction, re.IGNORECASE)
+        instruction = matches[-1]
 
-    listener, events = init_keyboard_listener()
-
-    log_say(f"Playing my turn {instruction}", cfg.play_sounds)
-
-        # if policy is given it needs cleaning up
-    if policy is not None:
-        policy.reset()
-
-    timestamp = 0
-    start_episode_t = time.perf_counter()
-    while timestamp < cfg.episode_time_s:
-        start_loop_t = time.perf_counter()
-
-        if events["exit_early"]:
-            events["exit_early"] = False
-            break
-
-        observation = robot.get_observation()
+        log_say(f"Playing my turn: {instruction}", cfg.play_sounds)
 
         if policy is not None:
-            observation_frame = build_dataset_frame(meta.features, observation, prefix="observation")
+            policy.reset()
 
-        if policy is not None:
-            action_values = predict_action(
-                observation_frame,
-                policy,
-                get_safe_torch_device(policy.config.device),
-                policy.config.use_amp,
-                task=instruction,
-                robot_type=robot.robot_type,
-            )
-            action = {key: action_values[i].item() for i, key in enumerate(robot.action_features)}
-        else:
-            print(
-                "No policy provided, skipping action generation."
-            )
-            continue
+        timestamp = 0
+        start_episode_t = time.perf_counter()
+        
+        while timestamp < cfg.robot_turn_time_s:
+            start_loop_t = time.perf_counter()
 
-        # Action can eventually be clipped using `max_relative_target`,
-        # so action actually sent is saved in the dataset.
-        robot.send_action(action)
+            if events["exit_early"]:
+                events["exit_early"] = False
+                break
 
-        dt_s = time.perf_counter() - start_loop_t
-        busy_wait(1 / cfg.fps - dt_s)
+            observation = robot.get_observation()
 
-        timestamp = time.perf_counter() - start_episode_t
+            if policy is not None:
+                observation_frame = build_dataset_frame(cfg.metadata.features, observation, prefix="observation")
+                action_values = predict_action(
+                    observation_frame,
+                    policy,
+                    get_safe_torch_device(policy.config.device),
+                    policy.config.use_amp,
+                    task=instruction,
+                    robot_type=robot.robot_type,
+                )
+                action = {key: action_values[i].item() for i, key in enumerate(robot.action_features)}
+                robot.send_action(action)
 
-    log_say(f"Finished playing. Now it is your turn", cfg.play_sounds)
+            dt_s = time.perf_counter() - start_loop_t
+            busy_wait(1 / cfg.fps - dt_s)
+            timestamp = time.perf_counter() - start_episode_t
 
-def get_grid_image(device_no):
-    cap = cv2.VideoCapture(device_no)
-    cap.set(3, 640)
-    cap.set(4, 480)
-    for _ in range(5):
-        cap.read()
-    ret, frame = cap.read()
-    cap.release()
+        log_say("Finished playing. Now it is your turn", cfg.play_sounds)
 
-    if ret:
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        img = Image.fromarray(frame_rgb)
-        # img.show()
-        return img
-    else:
-        print("Error capturing image")
+def get_grid_images(camera_indices: list[int]) -> list[Optional[Image.Image]]:
+    """Capture images from multiple cameras with proper resource management."""
+    images = []
+    
+    for device_no in camera_indices:
+        cap = cv2.VideoCapture(device_no)
+        try:
+            cap.set(3, 640)
+            cap.set(4, 480)
+            
+            # Warm up camera
+            for _ in range(5):
+                cap.read()
+            
+            ret, frame = cap.read()
+            if ret:
+                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                images.append(Image.fromarray(frame_rgb))
+            else:
+                print(f"Error capturing image from camera {device_no}")
+                images.append(None)
+        finally:
+            cap.release()
+    
+    return images
 
-def process_image_with_LLM(img, prompt):
+def process_images_with_LLM(images: list[Image.Image], prompt: str) -> Optional[str]:
+    """Process multiple images with LLM API with error handling."""
 
-    buffered = io.BytesIO()
-    img.save(buffered, format="JPEG")
-    img_bytes = buffered.getvalue()
-
-    # img_base64 = base64.b64encode(img_bytes).decode("utf-8")
+    contents = []
+    
+    # Add all images to the content
+    for i, img in enumerate(images):
+        if img is not None:
+            buffered = io.BytesIO()
+            img.save(buffered, format="JPEG")
+            img_bytes = buffered.getvalue()
+            
+            contents.append(types.Part.from_bytes(
+                data=img_bytes,
+                mime_type='image/jpeg',
+            ))
+    
+    # Add the prompt
+    contents.append(prompt)
     
     response = client.models.generate_content(
-      model="gemini-2.0-flash",
-      contents=[
-        types.Part.from_bytes(
-          data=img_bytes,
-          mime_type='image/jpeg',
-        ),
-        prompt
-      ],
-      config={
-        "temperature": 0.0
-      }
+        model="gemini-2.0-flash",
+        contents=contents,
+        config={
+            "temperature": 0.0
+        }
     )
     
     return response
 
-def get_LLM_output(camera_index=0):
-
+def get_LLM_output(camera_indices: list[int] = [0, 1]) -> str:
+    """Get LLM decision for next move."""
     prompt = """"
-            You are an expert at tic-tac-toe. The attached image shows a grid, numbered as:
-            1|2|3
-            -----
-            4|5|6
-            -----
-            7|8|9
+            You are an expert at tic-tac-toe. The attached images show a 3x3 grid board used for playing the game with tokens.
 
-            your task is to find the best grid number to place the Brown circle, in order to have the highest chance of winning.
+            The board orientation is as follows:
+
+            - One image shows a **top-down view** of the board. In this view, the grid is numbered as:
+                1 | 2 | 3
+                -----------
+                4 | 5 | 6
+                -----------
+                7 | 8 | 9
+
+
+            - The **left** of the top-down image contains a **yellow square** that helps with orientation. 
+            The grid is laid out such that grid position 1 is at the **top-left**, and position 9 is at the **bottom-right**.
+
+            - Another image shows a **front view** of the board, where the robot arm interacts with the tokens. 
+            The same **yellow square** in the top down view is now on the **right** of the front view image.
+      
+            your task is to find the best grid number to place the Brown Token, in order to have the highest chance of winning.
+            Instead of circles and crosses, the game is played with black and brown coins.
             The output must be in the format: "Place at position {grid posiiton number}"
             If either player has won or there are no possible moves to play. Output "Game Over"
             """
 
-    img = get_grid_image(camera_index)
-    response = process_image_with_LLM(img, prompt)
+    images = get_grid_images(camera_indices)
+    for image in images:
+        image.show()
+    response = process_images_with_LLM(images, prompt)
     output_string = response.text
 
     return output_string
@@ -210,7 +257,8 @@ def play(cfg: TicTacToeConfig) -> None:
     """Main game loop."""
     try:
         while True:
-            output = get_LLM_output(camera_index=0)
+            camera_indices = [0, 2]
+            output = get_LLM_output(camera_indices=camera_indices)
             
             if "Place at position" not in output:
                 print(f"Game ended or no valid move found. Output: {output}")
@@ -220,7 +268,7 @@ def play(cfg: TicTacToeConfig) -> None:
             call_policy(cfg, instruction=output)
             
             # Wait for Human to play
-            busy_wait(5)
+            busy_wait(cfg.player_turn_time_s)
             
     except KeyboardInterrupt:
         print("\nGame interrupted by user")
