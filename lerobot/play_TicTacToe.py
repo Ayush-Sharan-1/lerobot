@@ -1,5 +1,6 @@
 import cv2
 from PIL import Image
+import numpy as np
 import io
 import time
 from google import genai
@@ -161,48 +162,121 @@ def call_policy(cfg: TicTacToeConfig, instruction: str):
 
         log_say("Finished playing. Now it is your turn", cfg.play_sounds)
 
-def get_grid_images(camera_indices: list[int]) -> list[Optional[Image.Image]]:
-    """Capture images from multiple cameras with proper resource management."""
-    images = []
+def crop_image(image, left_pct, right_pct, top_pct, bottom_pct):
+    """
+    Crop the image
+    """
+    width, height = image.size
     
-    for device_no in camera_indices:
-        cap = cv2.VideoCapture(device_no)
-        try:
-            cap.set(3, 640)
-            cap.set(4, 480)
-            
-            # Warm up camera
-            for _ in range(5):
-                cap.read()
-            
-            ret, frame = cap.read()
-            if ret:
-                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                images.append(Image.fromarray(frame_rgb))
-            else:
-                print(f"Error capturing image from camera {device_no}")
-                images.append(None)
-        finally:
-            cap.release()
+    left = int(width * left_pct)    # Start from about x% from left
+    right = int(width * right_pct)   # End at about x% from left
+    top = int(height * top_pct)    # Start from about x% from top
+    bottom = int(height * bottom_pct) # End at about x% from top
     
-    return images
+    image = image.crop((left, top, right, bottom))
 
-def process_images_with_LLM(images: list[Image.Image], prompt: str) -> Optional[str]:
-    """Process multiple images with LLM API with error handling."""
+    return image
+
+def get_grid_image(camera_index: int) -> Optional[Image.Image]:
+    """Capture image from the camera."""
+
+    cap = cv2.VideoCapture(camera_index)
+    try:
+        cap.set(3, 640)
+        cap.set(4, 480)
+        
+        # Warm up camera
+        for _ in range(5):
+            cap.read()
+        
+        ret, frame = cap.read()
+        if ret:
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            image = Image.fromarray(frame_rgb)
+        else:
+            print(f"Error capturing image")
+            image = None
+    finally:
+        cap.release()
+    
+    return image
+
+def transform_to_top_view(pil_image, four_points, output_size=None):
+    """
+    Transform a PIL image from front view to top view using perspective transformation
+    
+    Args:
+        pil_image: PIL Image object (input image)
+        four_points: List of 4 coordinate tuples in anti-clockwise order from bottom-left
+                    [(bottom_left_x, bottom_left_y), (bottom_right_x, bottom_right_y), 
+                     (top_right_x, top_right_y), (top_left_x, top_left_y)]
+        output_size: Optional tuple (width, height) for output image size
+                    If None, uses original image dimensions
+    
+    Returns:
+        PIL Image: Transformed image showing top-down view
+    """
+    
+    # Convert PIL image to OpenCV format
+    cv_image = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
+    height, width = cv_image.shape[:2]
+    
+    # Set output size
+    if output_size is None:
+        output_width, output_height = width, height
+    else:
+        output_width, output_height = output_size
+    
+    # Extract points in anti-clockwise order from bottom-left
+    bottom_left = four_points[0]
+    bottom_right = four_points[1]
+    top_right = four_points[2]
+    top_left = four_points[3]
+    
+    # Source points (the quadrilateral in the original image)
+    # OpenCV expects points in order: top-left, top-right, bottom-right, bottom-left
+    src_points = np.float32([
+        top_left,      # Top-left
+        top_right,     # Top-right
+        bottom_right,  # Bottom-right
+        bottom_left    # Bottom-left
+    ])
+    
+    # Destination points (perfect rectangle for top-down view)
+    # Add some padding to avoid edge artifacts
+    padding = 20
+    dst_points = np.float32([
+        [padding, padding],                                    # Top-left
+        [output_width - padding, padding],                     # Top-right
+        [output_width - padding, output_height - padding],     # Bottom-right
+        [padding, output_height - padding]                     # Bottom-left
+    ])
+    
+    # Calculate the perspective transformation matrix
+    matrix = cv2.getPerspectiveTransform(src_points, dst_points)
+    
+    # Apply the perspective transformation
+    warped = cv2.warpPerspective(cv_image, matrix, (output_width, output_height))
+    
+    # Convert back to PIL format
+    warped_rgb = cv2.cvtColor(warped, cv2.COLOR_BGR2RGB)
+    return Image.fromarray(warped_rgb)
+
+
+def process_images_with_LLM(image: Image.Image, prompt: str) -> Optional[str]:
+    """Process multiple images with LLM API."""
 
     contents = []
-    
-    # Add all images to the content
-    for i, img in enumerate(images):
-        if img is not None:
-            buffered = io.BytesIO()
-            img.save(buffered, format="JPEG")
-            img_bytes = buffered.getvalue()
-            
-            contents.append(types.Part.from_bytes(
-                data=img_bytes,
-                mime_type='image/jpeg',
-            ))
+
+    if image is not None:
+        buffered = io.BytesIO()
+        image.save(buffered, format="JPEG")
+        img_bytes = buffered.getvalue()
+        
+        contents.append(types.Part.from_bytes(
+            data=img_bytes,
+            mime_type='image/jpeg',
+        ))
     
     # Add the prompt
     contents.append(prompt)
@@ -217,63 +291,71 @@ def process_images_with_LLM(images: list[Image.Image], prompt: str) -> Optional[
     
     return response
 
-def get_LLM_output(camera_indices: list[int] = [0, 1]) -> str:
+def get_LLM_output(image: Image.Image) -> str:
     """Get LLM decision for next move."""
     prompt = """"
-            You are an expert at tic-tac-toe. The attached images show a 3x3 grid board used for playing the game with tokens.
+            The attached images show a 3x3 grid board used for playing the game with tokens.
 
             The board orientation is as follows:
 
-            - One image shows a **top-down view** of the board. In this view, the grid is numbered as:
-                1 | 2 | 3
-                -----------
-                4 | 5 | 6
-                -----------
-                7 | 8 | 9
+            Top Row:
+            Position 1 | Position 2 | Position 3
+            Middle Row:
+            Position 4 | Position 5 | Position 6
+            Bottom Row:
+            Position 7 | Position 8 | Position 9
 
-
-            - The **left** of the top-down image contains a **yellow square** that helps with orientation. 
-            The grid is laid out such that grid position 1 is at the **top-left**, and position 9 is at the **bottom-right**.
-
-            - Another image shows a **front view** of the board, where the robot arm interacts with the tokens. 
-            The same **yellow square** in the top down view is now on the **right** of the front view image.
+            1 | 2 | 3
+            ---------
+            4 | 5 | 6
+            ---------
+            7 | 8 | 9
       
-            your task is to find the best grid number to place the Brown Token, in order to have the highest chance of winning.
+            Mention the state of the board in the following format:
+
+            Position 1: Empty/Brown/Black
+            Position 2: Empty/Brown/Black
+            And so on
+
+            This is a game of Tic Tacc Toe. 
             Instead of circles and crosses, the game is played with black and brown coins.
+            Your task is to find the best grid number to place the Brown Token, in order to have the highest chance of winning.
             The output must be in the format: "Place at position {grid posiiton number}"
             If either player has won or there are no possible moves to play. Output "Game Over"
+            
             """
 
-    images = get_grid_images(camera_indices)
-    for image in images:
-        image.show()
-    response = process_images_with_LLM(images, prompt)
+    response = process_images_with_LLM(image, prompt)
     output_string = response.text
 
+    print(output_string)
+    
     return output_string
 
 @parser.wrap()
 def play(cfg: TicTacToeConfig) -> None:
     """Main game loop."""
-    try:
-        while True:
-            camera_indices = [0, 2]
-            output = get_LLM_output(camera_indices=camera_indices)
+    while True:
+        camera_index = 2
+        image = get_grid_image(camera_index = camera_index)
+        image = crop_image(image, left_pct = 0.25, right_pct = 0.61 , top_pct = 0.82, bottom_pct = 1.0)
+        four_points = [(9, 76), (214, 79), (205, 7), (59, 7)]
+        image=transform_to_top_view(image, four_points, output_size=[400,400])
+        image = crop_image(image, left_pct = 0.05, right_pct = 0.95 , top_pct = 0.03, bottom_pct = 0.95)
+        image = image.rotate(180)
+        image.show()
+        output = get_LLM_output(image = image)
+        
+        if "Place at position" not in output:
+            print(f"Game ended or no valid move found. Output: {output}")
+            break
+        
+        print(f"LLM decision: {output}")
+        call_policy(cfg, instruction=output)
+        
+        # Wait for Human to play
+        busy_wait(cfg.player_turn_time_s)
             
-            if "Place at position" not in output:
-                print(f"Game ended or no valid move found. Output: {output}")
-                break
-            
-            print(f"LLM decision: {output}")
-            call_policy(cfg, instruction=output)
-            
-            # Wait for Human to play
-            busy_wait(cfg.player_turn_time_s)
-            
-    except KeyboardInterrupt:
-        print("\nGame interrupted by user")
-    except Exception as e:
-        print(f"Game error: {e}")
 
 if __name__ == "__main__":
     play()
