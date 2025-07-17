@@ -126,8 +126,6 @@ def call_policy(cfg: TicTacToeConfig, instruction: str):
         matches = re.findall(r'Place at position \d+', instruction, re.IGNORECASE)
         instruction = matches[-1]
 
-        log_say(f"Playing my turn: {instruction}", cfg.play_sounds)
-
         if policy is not None:
             policy.reset()
 
@@ -160,7 +158,6 @@ def call_policy(cfg: TicTacToeConfig, instruction: str):
             busy_wait(1 / cfg.fps - dt_s)
             timestamp = time.perf_counter() - start_episode_t
 
-        log_say("Finished playing. Now it is your turn", cfg.play_sounds)
 
 def crop_image(image, left_pct, right_pct, top_pct, bottom_pct):
     """
@@ -264,7 +261,7 @@ def transform_to_top_view(pil_image, four_points, output_size=None):
 
 
 def process_images_with_LLM(image: Image.Image, prompt: str) -> Optional[str]:
-    """Process multiple images with LLM API."""
+    """Call the LLM API with the image and prompt"""
 
     contents = []
 
@@ -316,26 +313,142 @@ def get_LLM_output(image: Image.Image) -> str:
             Position 1: Empty/Brown/Black
             Position 2: Empty/Brown/Black
             And so on
-
-            This is a game of Tic Tacc Toe. 
-            Instead of circles and crosses, the game is played with black and brown coins.
-            Your task is to find the best grid number to place the Brown Token, in order to have the highest chance of winning.
-            The output must be in the format: "Place at position {grid posiiton number}"
-            If either player has won or there are no possible moves to play. Output "Game Over"
             
             """
 
     response = process_images_with_LLM(image, prompt)
     output_string = response.text
 
-    print(output_string)
+    # print(output_string)
     
     return output_string
+
+def parse_board_state(board_string):
+    """
+    Parse a board state string and return a vector of size 9.
+    
+    Args:
+        board_string (str): String containing position information
+        
+    Returns:
+        list: Vector where -1 = Black, 1 = Brown, 0 = Empty
+    """
+    # Initialize vector with zeros
+    vector = [0] * 9
+    
+    # Split the string into lines and process each line
+    lines = board_string.strip().split('\n')
+    
+    for line in lines:
+        line = line.strip()
+        if line.startswith('Position'):
+            # Extract position number and state
+            parts = line.split(':')
+            if len(parts) == 2:
+                position_part = parts[0].strip()
+                state_part = parts[1].strip()
+                
+                # Extract position number
+                position_num = int(position_part.split()[-1])
+                
+                # Convert to 0-indexed
+                index = position_num - 1
+                
+                # Set value based on state
+                if state_part.lower() == 'black':
+                    vector[index] = -1
+                elif state_part.lower() == 'brown':
+                    vector[index] = 1
+                elif state_part.lower() == 'empty':
+                    vector[index] = 0
+    
+    return vector
+
+def analyzeboard(board):
+    cb=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]]
+
+    for i in range(0,8):
+        if(board[cb[i][0]] != 0 and
+           board[cb[i][0]] == board[cb[i][1]] and
+           board[cb[i][0]] == board[cb[i][2]]):
+            return board[cb[i][2]]
+    return 0
+
+def minimax(board,player):
+    x=analyzeboard(board)
+    if(x!=0):
+        return (x*player)
+    pos=-1
+    value=-2
+    for i in range(0,9):
+        if(board[i]==0):
+            board[i]=player
+            score=-minimax(board,(player*-1))
+            if(score>value):
+                value=score
+                pos=i
+            board[i]=0
+
+    if(pos==-1):
+        return 0
+    return value
+
+def CompTurn(board):
+    pos=-1
+    value=-2
+    for i in range(0,9):
+        if(board[i]==0):
+            board[i]=1
+            score=-minimax(board, -1)
+            board[i]=0
+            if(score>value):
+                value=score
+                pos=i
+ 
+    return pos + 1 # change to 1 indexing
+
+def print_board(vector):
+    """
+    Convert a vector of 9 elements to a tic-tac-toe board display.
+    
+    Args:
+        vector (list): List of 9 elements where -1 = "X", 1 = "O", 0 = empty
+        
+    Returns:
+        str: String representation of the tic-tac-toe board
+    """
+    # Convert vector values to board symbols
+    symbols = []
+    for val in vector:
+        if val == -1:
+            symbols.append("X")
+        elif val == 1:
+            symbols.append("O")
+        else:
+            symbols.append(" ")
+    
+    # Create the board layout
+    board = f"""
+ {symbols[0]} | {symbols[1]} | {symbols[2]} 
+-----------
+ {symbols[3]} | {symbols[4]} | {symbols[5]} 
+-----------
+ {symbols[6]} | {symbols[7]} | {symbols[8]} 
+"""
+    
+    print(board)
 
 @parser.wrap()
 def play(cfg: TicTacToeConfig) -> None:
     """Main game loop."""
+    i=0
     while True:
+
+        if i!=0:
+            log_say("Now it is your turn", cfg.play_sounds)
+            # Wait for Human to play
+            busy_wait(cfg.player_turn_time_s)
+
         camera_index = 2
         image = get_grid_image(camera_index = camera_index)
         image = crop_image(image, left_pct = 0.25, right_pct = 0.61 , top_pct = 0.82, bottom_pct = 1.0)
@@ -344,17 +457,41 @@ def play(cfg: TicTacToeConfig) -> None:
         image = crop_image(image, left_pct = 0.05, right_pct = 0.95 , top_pct = 0.03, bottom_pct = 0.95)
         image = image.rotate(180)
         image.show()
-        output = get_LLM_output(image = image)
-        
-        if "Place at position" not in output:
-            print(f"Game ended or no valid move found. Output: {output}")
+        llm_output = get_LLM_output(image = image)
+        board_state = parse_board_state(llm_output)
+
+        # print(board_state)
+        print_board(board_state)
+
+        if sum(board_state) > 1 or sum(board_state) < -1:
+            print("Invalid Board State")
+            log_say(f"Invalid Board State", cfg.play_sounds)
             break
+
+        if analyzeboard(board_state)==0:
+            comp_position = CompTurn(board_state)
+            output = f"Place at Position {comp_position}"
+        else:
+            output = "Game Over"
         
-        print(f"LLM decision: {output}")
+        if "Game Over" in output:
+            print("Game Over")
+            log_say(f"Gave Over", cfg.play_sounds)
+            break
+
+        if "place at position" not in output.lower():
+            print(f"Position not specified. Output: {output}")
+            log_say(f"Game Ended Unexpectedly", cfg.play_sounds)
+            break
+
+
+        
+        print(f"Decision: {output}")
+        log_say(f"Placing at position {comp_position}", cfg.play_sounds)
         call_policy(cfg, instruction=output)
         
-        # Wait for Human to play
-        busy_wait(cfg.player_turn_time_s)
+        i+=1
+
             
 
 if __name__ == "__main__":
